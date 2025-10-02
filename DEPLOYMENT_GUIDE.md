@@ -36,6 +36,8 @@
 - 前端镜像: `docker.io/<username>/<repository>-frontend:latest`
 - Nginx 镜像: `docker.io/<username>/<repository>-nginx:latest`
 
+**注意**: 镜像名称现在包含Docker Hub用户名，格式为：`docker.io/<username>/<repository>-<service>:latest`
+
 ## MySQL 配置
 
 MySQL 使用官方 `mysql:8.0` 镜像，无需构建自定义镜像。工作流会自动：
