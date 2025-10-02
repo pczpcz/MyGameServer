@@ -86,7 +86,7 @@ jobs:
         # SSH部署到EC2示例
         ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
         # 确保必要的目录存在
-        mkdir -p /tmp mysql nginx
+        mkdir -p /tmp mysql nginx scripts
         
         # 停止并删除当前运行的容器
         RUNNING_CONTAINERS=$(sudo docker ps -q)

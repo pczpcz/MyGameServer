@@ -2,6 +2,8 @@
 #include <cpprest/json.h>
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <chrono>
 #include "Database.h"
 #include "UserController.h"
 
@@ -20,13 +22,13 @@ public:
         : listener("http://0.0.0.0:8080/api") {
         
         // Initialize database connection
-        database = std::make_unique<Database>();
+        //database = std::make_unique<Database>();
         
         // Initialize controllers
-        userController = std::make_unique<UserController>(database.get());
+        //userController = std::make_unique<UserController>(database.get());
         
         // Setup routes
-        setupRoutes();
+        //setupRoutes();
     }
 
     /**
@@ -96,11 +98,24 @@ public:
 
     void run() {
         try {
+            // Initialize database connection
+            database = std::make_unique<Database>();
+            
+            // Initialize controllers
+            userController = std::make_unique<UserController>(database.get());
+            
+            // Setup routes
+            setupRoutes();
+            
             listener.open().wait();
             std::cout << "C++ Backend API server listening on http://0.0.0.0:8080" << std::endl;
-            std::cout << "Press ENTER to exit." << std::endl;
-            std::string line;
-            std::getline(std::cin, line);
+            std::cout << "Server is running. Use Ctrl+C to stop." << std::endl;
+            
+            // Keep the server running
+            while (true) {
+                std::this_thread::sleep_for(std::chrono::seconds(60));
+            }
+            
             listener.close().wait();
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
@@ -111,8 +126,13 @@ public:
 int main() {
     std::cout << "Starting C++ Backend API Server..." << std::endl;
     
-    Application app;
-    app.run();
+    try {
+        Application app;
+        app.run();
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return 1;
+    }
     
     return 0;
 }
