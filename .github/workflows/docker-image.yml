@@ -75,16 +75,18 @@ jobs:
         ls -la mysql/init.sql
         ls -la nginx/nginx.prod.conf
         ls -la docker-compose.prod.yml
+        ls -la scripts/setup-ssl.sh
         
         # 上传所有必要的文件到服务器
         scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
         scp -o StrictHostKeyChecking=no nginx/nginx.prod.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.prod.conf
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/docker-compose.prod.yml
+        scp -o StrictHostKeyChecking=no scripts/setup-ssl.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/setup-ssl.sh
         
         # SSH部署到EC2示例
         ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
         # 确保必要的目录存在
-        mkdir -p /tmp mysql nginx
+        mkdir -p /tmp mysql nginx scripts
         
         # 停止并删除当前运行的容器
         RUNNING_CONTAINERS=$(sudo docker ps -q)
@@ -110,6 +112,8 @@ jobs:
         mv /tmp/init.sql mysql/init.sql
         mv /tmp/nginx.prod.conf nginx/nginx.prod.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
+        mv /tmp/setup-ssl.sh scripts/setup-ssl.sh
+        chmod +x scripts/setup-ssl.sh
         
         # 创建.env文件来设置环境变量（docker-compose会自动读取）
         echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
