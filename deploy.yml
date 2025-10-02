@@ -39,7 +39,6 @@ jobs:
         file: ./backend/Dockerfile
         push: true
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.run_id }}-${{ github.run_attempt }}
         # 完全禁用缓存
@@ -56,7 +55,6 @@ jobs:
         file: ./frontend/Dockerfile
         push: true
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.run_id }}-${{ github.run_attempt }}
         # 完全禁用缓存
@@ -124,16 +122,13 @@ jobs:
         sudo docker pull nginx:alpine
         sudo docker pull mysql:8.0
         
-        # 同时拉取latest标签作为备份
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest || true
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest || true
-        
         # 删除旧的镜像版本（保留最新版本）
         sudo docker images --filter "dangling=true" -q | xargs -r sudo docker rmi
         
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
-        mv /tmp/nginx.prod.conf nginx/nginx.prod.conf
+        # 将nginx.prod.conf覆盖nginx.conf，确保Nginx使用正确配置
+        mv /tmp/nginx.prod.conf nginx/nginx.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         mv /tmp/setup-ssl.sh scripts/setup-ssl.sh
         chmod +x scripts/setup-ssl.sh
