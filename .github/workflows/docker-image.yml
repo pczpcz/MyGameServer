@@ -47,22 +47,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Build and push nginx image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./nginx
-        file: ./nginx/Dockerfile
-        push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Upload MySQL init script
-      uses: actions/upload-artifact@v4
-      with:
-        name: mysql-init-script
-        path: mysql/init.sql
-        retention-days: 30
 
   deploy:
     needs: build-and-test
@@ -73,11 +57,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Download MySQL init script
-      uses: actions/download-artifact@v4
-      with:
-        name: mysql-init-script
-        path: mysql/
 
     - name: Install SSH Key
       uses: webfactory/ssh-agent@v0.5.3
@@ -90,31 +69,46 @@ jobs:
         echo "Images built and pushed successfully:"
         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest"
         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest"
-        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:latest"
-        echo "MySQL init script available for deployment"
+        echo "MySQL and Nginx configs available for deployment"
+        
+        # 检查文件是否存在
+        ls -la mysql/init.sql
+        ls -la nginx/nginx.conf
+        ls -la docker-compose.yml
+        
+        # 上传所有必要的文件到服务器
+        scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
+        scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.conf
+        scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/docker-compose.yml
         
         # SSH部署到EC2示例
         ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
-        # 拉取最新镜像
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx:latest
-        docker pull mysql:8.0
+        # 确保必要的目录存在
+        mkdir -p /tmp mysql nginx
         
-        # 上传MySQL初始化脚本到服务器
-        scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
+        # 使用sudo拉取最新镜像（解决Docker权限问题）
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+        sudo docker pull nginx:alpine
+        sudo docker pull mysql:8.0
         
         # 停止并删除当前运行的容器
-        RUNNING_CONTAINERS=$(docker ps -q)
+        RUNNING_CONTAINERS=$(sudo docker ps -q)
         if [ ! -z "$RUNNING_CONTAINERS" ]; then
-          docker stop $RUNNING_CONTAINERS
-          docker rm $RUNNING_CONTAINERS
+          sudo docker stop $RUNNING_CONTAINERS
+          sudo docker rm $RUNNING_CONTAINERS
         fi
         
-        # 确保MySQL初始化脚本在正确位置
-        mkdir -p mysql
+        # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
+        mv /tmp/nginx.conf nginx/nginx.conf
+        mv /tmp/docker-compose.yml docker-compose.yml
         
-        # 使用docker-compose启动服务
-        docker-compose up -d
+        # 使用docker-compose启动服务（需要sudo权限）
+        # 如果docker-compose命令不存在，使用docker compose替代
+        if command -v docker-compose &> /dev/null; then
+          sudo docker-compose up -d
+        else
+          sudo docker compose up -d
+        fi
         EOF
