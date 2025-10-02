@@ -104,8 +104,8 @@ jobs:
         docker pull mysql:8.0
         
         # 上传配置文件和初始化脚本到服务器
-        scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
-        scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.conf
+        sudo scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
+        sudo scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.conf
         
         # 停止并删除当前运行的容器
         RUNNING_CONTAINERS=$(docker ps -q)
@@ -115,9 +115,9 @@ jobs:
         fi
         
         # 确保配置文件和初始化脚本在正确位置
-        mkdir -p mysql nginx
-        mv /tmp/init.sql mysql/init.sql
-        mv /tmp/nginx.conf nginx/nginx.conf
+        sudo mkdir -p mysql nginx
+        sudo mv /tmp/init.sql mysql/init.sql
+        sudo mv /tmp/nginx.conf nginx/nginx.conf
         
         # 使用docker-compose启动服务
         docker-compose up -d
