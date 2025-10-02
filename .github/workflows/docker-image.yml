@@ -74,12 +74,12 @@ jobs:
         # 检查文件是否存在
         ls -la mysql/init.sql
         ls -la nginx/nginx.conf
-        ls -la docker-compose.yml
+        ls -la docker-compose.prod.yml
         
         # 上传所有必要的文件到服务器
         scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
         scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.conf
-        scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/docker-compose.yml
+        scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/docker-compose.prod.yml
         
         # SSH部署到EC2示例
         ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
@@ -102,13 +102,17 @@ jobs:
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
         mv /tmp/nginx.conf nginx/nginx.conf
-        mv /tmp/docker-compose.yml docker-compose.yml
+        mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         
-        # 使用docker-compose启动服务（需要sudo权限）
+        # 设置环境变量
+        export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+        export REPOSITORY_NAME=${{ github.event.repository.name }}
+        
+        # 使用生产环境的docker-compose文件启动服务（需要sudo权限）
         # 如果docker-compose命令不存在，使用docker compose替代
         if command -v docker-compose &> /dev/null; then
-          sudo docker-compose up -d
+          sudo docker-compose -f docker-compose.prod.yml up -d
         else
-          sudo docker compose up -d
+          sudo docker compose -f docker-compose.prod.yml up -d
         fi
         EOF
