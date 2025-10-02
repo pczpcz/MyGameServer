@@ -27,6 +27,11 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Clean Docker cache
+      run: |
+        docker system prune -f
+        docker builder prune -f -a
+
     - name: Build and push backend image
       uses: docker/build-push-action@v5
       with:
@@ -36,8 +41,13 @@ jobs:
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.run_id }}-${{ github.run_attempt }}
+        # 完全禁用缓存
+        no-cache: true
+        # 强制重新构建所有层
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          COMMIT_SHA=${{ github.sha }}
 
     - name: Build and push frontend image
       uses: docker/build-push-action@v5
@@ -48,8 +58,13 @@ jobs:
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.run_id }}-${{ github.run_attempt }}
+        # 完全禁用缓存
+        no-cache: true
+        # 强制重新构建所有层
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          COMMIT_SHA=${{ github.sha }}
 
 
   deploy:
