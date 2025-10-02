@@ -27,15 +27,26 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Clean Docker cache
+      run: |
+        docker system prune -f
+        docker builder prune -f -a
+
     - name: Build and push backend image
       uses: docker/build-push-action@v5
       with:
         context: ./backend
         file: ./backend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.run_id }}-${{ github.run_attempt }}
+        # 完全禁用缓存
+        no-cache: true
+        # 强制重新构建所有层
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          COMMIT_SHA=${{ github.sha }}
 
     - name: Build and push frontend image
       uses: docker/build-push-action@v5
@@ -43,9 +54,15 @@ jobs:
         context: ./frontend
         file: ./frontend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.run_id }}-${{ github.run_attempt }}
+        # 完全禁用缓存
+        no-cache: true
+        # 强制重新构建所有层
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          COMMIT_SHA=${{ github.sha }}
 
 
   deploy:
@@ -99,9 +116,9 @@ jobs:
         sudo docker image prune -f
         
         # 使用sudo拉取最新镜像（解决Docker权限问题）
-        # 只拉取需要的镜像，避免重复下载
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+        # 使用唯一标签确保拉取最新版本
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
         sudo docker pull nginx:alpine
         sudo docker pull mysql:8.0
         
@@ -110,7 +127,8 @@ jobs:
         
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
-        mv /tmp/nginx.prod.conf nginx/nginx.prod.conf
+        # 将nginx.prod.conf覆盖nginx.conf，确保Nginx使用正确配置
+        mv /tmp/nginx.prod.conf nginx/nginx.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         mv /tmp/setup-ssl.sh scripts/setup-ssl.sh
         chmod +x scripts/setup-ssl.sh
@@ -118,6 +136,7 @@ jobs:
         # 创建.env文件来设置环境变量（docker-compose会自动读取）
         echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
         echo "REPOSITORY_NAME=${{ github.event.repository.name }}" >> .env
+        echo "COMMIT_SHA=${{ github.sha }}" >> .env
         
         # 使用生产环境的docker-compose文件启动服务（需要sudo权限）
         # 如果docker-compose命令不存在，使用docker compose替代
