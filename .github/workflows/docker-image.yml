@@ -73,12 +73,12 @@ jobs:
         
         # 检查文件是否存在
         ls -la mysql/init.sql
-        ls -la nginx/nginx.conf
+        ls -la nginx/nginx.prod.conf
         ls -la docker-compose.prod.yml
         
         # 上传所有必要的文件到服务器
         scp -o StrictHostKeyChecking=no mysql/init.sql ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/init.sql
-        scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.conf
+        scp -o StrictHostKeyChecking=no nginx/nginx.prod.conf ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/nginx.prod.conf
         scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_INSTANCE_IP }}:/tmp/docker-compose.prod.yml
         
         # SSH部署到EC2示例
@@ -108,7 +108,7 @@ jobs:
         
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
-        mv /tmp/nginx.conf nginx/nginx.conf
+        mv /tmp/nginx.prod.conf nginx/nginx.prod.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         
         # 创建.env文件来设置环境变量（docker-compose会自动读取）
