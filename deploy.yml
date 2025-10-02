@@ -33,7 +33,9 @@ jobs:
         context: ./backend
         file: ./backend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -43,7 +45,9 @@ jobs:
         context: ./frontend
         file: ./frontend/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -99,11 +103,15 @@ jobs:
         sudo docker image prune -f
         
         # 使用sudo拉取最新镜像（解决Docker权限问题）
-        # 只拉取需要的镜像，避免重复下载
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+        # 使用唯一标签确保拉取最新版本
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
         sudo docker pull nginx:alpine
         sudo docker pull mysql:8.0
+        
+        # 同时拉取latest标签作为备份
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest || true
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest || true
         
         # 删除旧的镜像版本（保留最新版本）
         sudo docker images --filter "dangling=true" -q | xargs -r sudo docker rmi
@@ -118,6 +126,7 @@ jobs:
         # 创建.env文件来设置环境变量（docker-compose会自动读取）
         echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
         echo "REPOSITORY_NAME=${{ github.event.repository.name }}" >> .env
+        echo "COMMIT_SHA=${{ github.sha }}" >> .env
         
         # 使用生产环境的docker-compose文件启动服务（需要sudo权限）
         # 如果docker-compose命令不存在，使用docker compose替代

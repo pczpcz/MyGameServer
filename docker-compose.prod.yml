@@ -21,7 +21,7 @@ services:
 
   # C++ Backend API
   backend:
-    image: ${DOCKERHUB_USERNAME}/${REPOSITORY_NAME}-backend:latest
+    image: ${DOCKERHUB_USERNAME}/${REPOSITORY_NAME}-backend:${COMMIT_SHA:-latest}
     container_name: cpp_backend
     restart: unless-stopped
     ports:
@@ -39,7 +39,7 @@ services:
 
   # Next.js Frontend
   frontend:
-    image: ${DOCKERHUB_USERNAME}/${REPOSITORY_NAME}-frontend:latest
+    image: ${DOCKERHUB_USERNAME}/${REPOSITORY_NAME}-frontend:${COMMIT_SHA:-latest}
     container_name: nextjs_frontend
     restart: unless-stopped
     ports:
