@@ -86,12 +86,6 @@ jobs:
         # 确保必要的目录存在
         mkdir -p /tmp mysql nginx
         
-        # 使用sudo拉取最新镜像（解决Docker权限问题）
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-        sudo docker pull nginx:alpine
-        sudo docker pull mysql:8.0
-        
         # 停止并删除当前运行的容器
         RUNNING_CONTAINERS=$(sudo docker ps -q)
         if [ ! -z "$RUNNING_CONTAINERS" ]; then
@@ -99,14 +93,27 @@ jobs:
           sudo docker rm $RUNNING_CONTAINERS
         fi
         
+        # 清理旧的Docker镜像以节省空间
+        sudo docker image prune -f
+        
+        # 使用sudo拉取最新镜像（解决Docker权限问题）
+        # 只拉取需要的镜像，避免重复下载
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+        sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+        sudo docker pull nginx:alpine
+        sudo docker pull mysql:8.0
+        
+        # 删除旧的镜像版本（保留最新版本）
+        sudo docker images --filter "dangling=true" -q | xargs -r sudo docker rmi
+        
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
         mv /tmp/nginx.conf nginx/nginx.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         
-        # 设置环境变量
-        export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-        export REPOSITORY_NAME=${{ github.event.repository.name }}
+        # 创建.env文件来设置环境变量（docker-compose会自动读取）
+        echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
+        echo "REPOSITORY_NAME=${{ github.event.repository.name }}" >> .env
         
         # 使用生产环境的docker-compose文件启动服务（需要sudo权限）
         # 如果docker-compose命令不存在，使用docker compose替代
@@ -115,4 +122,7 @@ jobs:
         else
           sudo docker compose -f docker-compose.prod.yml up -d
         fi
+        
+        # 再次清理未使用的镜像和容器
+        sudo docker system prune -f
         EOF
