@@ -80,7 +80,7 @@ jobs:
       run: |
         echo "Deployment would happen here"
         echo "Images built and pushed successfully:"
-        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}"
         echo "MySQL and Nginx configs available for deployment"
         
