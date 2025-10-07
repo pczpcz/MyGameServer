@@ -40,7 +40,6 @@ jobs:
         push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.run_id }}-${{ github.run_attempt }}
         # 完全禁用缓存
         no-cache: true
         # 强制重新构建所有层
@@ -56,14 +55,12 @@ jobs:
         push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.run_id }}-${{ github.run_attempt }}
         # 完全禁用缓存
         no-cache: true
         # 强制重新构建所有层
         build-args: |
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
           COMMIT_SHA=${{ github.sha }}
-
 
   deploy:
     needs: build-and-test
@@ -74,7 +71,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-
     - name: Install SSH Key
       uses: webfactory/ssh-agent@v0.5.3
       with:
@@ -84,8 +80,8 @@ jobs:
       run: |
         echo "Deployment would happen here"
         echo "Images built and pushed successfully:"
-        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest"
-        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest"
+        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}"
         echo "MySQL and Nginx configs available for deployment"
         
         # 检查文件是否存在
@@ -121,9 +117,6 @@ jobs:
         sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
         sudo docker pull nginx:alpine
         sudo docker pull mysql:8.0
-        
-        # 删除旧的镜像版本（保留最新版本）
-        sudo docker images --filter "dangling=true" -q | xargs -r sudo docker rmi
         
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
