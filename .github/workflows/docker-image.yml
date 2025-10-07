@@ -133,7 +133,7 @@ jobs:
         # 确保配置文件和初始化脚本在正确位置
         mv /tmp/init.sql mysql/init.sql
         # 将nginx.prod.conf覆盖nginx.conf，确保Nginx使用正确配置
-        mv /tmp/nginx.prod.conf nginx/nginx.conf
+        mv /tmp/nginx.prod.conf nginx/nginx.prod.conf
         mv /tmp/docker-compose.prod.yml docker-compose.prod.yml
         mv /tmp/setup-ssl.sh scripts/setup-ssl.sh
         chmod +x scripts/setup-ssl.sh
