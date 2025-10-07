@@ -80,7 +80,7 @@ jobs:
       run: |
         echo "Deployment would happen here"
         echo "Images built and pushed successfully:"
-        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}"
         echo "MySQL and Nginx configs available for deployment"
         
@@ -101,15 +101,27 @@ jobs:
         # 确保必要的目录存在
         mkdir -p /tmp mysql nginx scripts
         
-        # 停止并删除当前运行的容器
+        # 停止并删除所有运行的容器
         RUNNING_CONTAINERS=$(sudo docker ps -q)
         if [ ! -z "$RUNNING_CONTAINERS" ]; then
           sudo docker stop $RUNNING_CONTAINERS
           sudo docker rm $RUNNING_CONTAINERS
         fi
         
-        # 清理旧的Docker镜像以节省空间
-        sudo docker image prune -f
+        # 删除所有未运行的容器
+        ALL_CONTAINERS=$(sudo docker ps -a -q)
+        if [ ! -z "$ALL_CONTAINERS" ]; then
+          sudo docker rm $ALL_CONTAINERS
+        fi
+        
+        # 删除所有Docker镜像（包括未使用的和正在使用的）
+        ALL_IMAGES=$(sudo docker images -q)
+        if [ ! -z "$ALL_IMAGES" ]; then
+          sudo docker rmi -f $ALL_IMAGES
+        fi
+        
+        # 清理Docker系统（卷、网络等）
+        sudo docker system prune -a -f --volumes
         
         # 使用sudo拉取最新镜像（解决Docker权限问题）
         # 使用唯一标签确保拉取最新版本
