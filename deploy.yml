@@ -151,6 +151,34 @@ jobs:
           sudo docker compose -f docker-compose.prod.yml up -d
         fi
         
+        # 等待nginx容器启动
+        echo "等待nginx容器启动..."
+        sleep 10
+        
+        # 使用docker cp方法确保nginx配置正确应用
+        NGINX_CONTAINER=$(sudo docker ps --filter "name=nginx_proxy" --format "{{.ID}}")
+        if [ ! -z "$NGINX_CONTAINER" ]; then
+          echo "找到nginx容器: $NGINX_CONTAINER"
+          
+          # 复制nginx配置到容器
+          sudo cp nginx/nginx.prod.conf nginx/nginx.conf
+          sudo docker cp nginx/nginx.conf $NGINX_CONTAINER:/etc/nginx/nginx.conf
+          
+          # 测试nginx配置
+          sudo docker exec $NGINX_CONTAINER nginx -t
+          
+          # 重新加载nginx配置
+          sudo docker exec $NGINX_CONTAINER nginx -s reload
+          
+          echo "nginx配置已通过docker cp方法更新并重新加载"
+        else
+          echo "警告: 未找到nginx容器"
+        fi
+        
+        # 验证服务状态
+        echo "验证服务状态..."
+        sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        
         # 再次清理未使用的镜像和容器
         sudo docker system prune -f
         EOF
